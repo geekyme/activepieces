@@ -1,5 +1,7 @@
 import { t } from 'i18next';
 import { Folder, Key, Link2, Logs, Users, Workflow } from 'lucide-react';
+import { useState } from 'react';
+import { useDebounce } from 'use-debounce';
 
 import LockedFeatureGuard from '@/app/components/locked-feature-guard';
 import { DataTable } from '@/components/ui/data-table';
@@ -20,9 +22,12 @@ import {
 import { isNil } from '@activepieces/shared';
 
 import { TableTitle } from '../../../../components/ui/table-title';
+import { Input } from '@/components/ui/input';
 
 export default function AuditLogsPage() {
   const { platform } = platformHooks.useCurrentPlatform();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery] = useDebounce(searchQuery, 300);
 
   const isEnabled = platform.auditLogEnabled;
   return (
@@ -36,6 +41,13 @@ export default function AuditLogsPage() {
     >
       <div className="flex flex-col  w-full">
         <TableTitle>{t('Audit Logs')}</TableTitle>
+        <div className="mb-4">
+          <Input
+            placeholder={t('Search by email')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
         <DataTable
           columns={[
             {
@@ -135,6 +147,7 @@ export default function AuditLogsPage() {
             auditEventsApi.list({
               cursor: pagination.cursor,
               limit: pagination.limit ?? 10,
+              userEmail: debouncedQuery || undefined,
             })
           }
         />

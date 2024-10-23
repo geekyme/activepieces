@@ -4,6 +4,7 @@ import { SigningKey } from "../signing-key";
 export const ListAuditEventsRequest = Type.Object({
     limit: Type.Optional(Type.Number()),
     cursor: Type.Optional(Type.String()),
+    userEmail: Type.Optional(Type.String()),
 })
 
 export type ListAuditEventsRequest = Static<typeof ListAuditEventsRequest>;

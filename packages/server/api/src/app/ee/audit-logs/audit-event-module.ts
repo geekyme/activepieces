@@ -27,6 +27,7 @@ const auditEventController: FastifyPluginAsyncTypebox = async (app) => {
                 platformId,
                 cursorRequest: request.query.cursor ?? null,
                 limit: request.query.limit ?? 20,
+                userEmail: request.query.userEmail,
             })
         },
     )
