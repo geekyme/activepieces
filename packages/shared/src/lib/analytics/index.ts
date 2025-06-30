@@ -23,6 +23,18 @@ export type AnalyticsProjectReportItem = Static<typeof AnalyticsProjectReportIte
 export const AnalyticsProjectReport = Type.Array(AnalyticsProjectReportItem)
 export type AnalyticsProjectReport = Static<typeof AnalyticsProjectReport>
 
+export const ProjectUsageHistoryItem = Type.Object({
+    projectId: Type.String(),
+    projectName: Type.String(),
+    month: Type.String(),
+    totalTasks: Type.Number(),
+    totalAICost: Type.Number(),
+})
+export type ProjectUsageHistoryItem = Static<typeof ProjectUsageHistoryItem>
+
+export const ProjectUsageHistoryResponse = Type.Array(ProjectUsageHistoryItem)
+export type ProjectUsageHistoryResponse = Static<typeof ProjectUsageHistoryResponse>
+
 export const AnalyticsReportResponse = Type.Object({
     totalFlows: Type.Number(),
     activeFlows: Type.Number(),

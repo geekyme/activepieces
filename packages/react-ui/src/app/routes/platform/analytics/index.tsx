@@ -5,6 +5,7 @@ import LockedFeatureGuard from '@/app/components/locked-feature-guard';
 import { Metrics } from '@/app/routes/platform/analytics/metrics';
 import { Reports } from '@/app/routes/platform/analytics/reports';
 import { TaskUsage } from '@/app/routes/platform/analytics/task-usage';
+import { ProjectUsageHistory } from '@/app/routes/platform/analytics/project-usage-history';
 import { Separator } from '@/components/ui/separator';
 import { analyticsApi } from '@/features/platform-admin/lib/analytics-api';
 import { platformHooks } from '@/hooks/platform-hooks';
@@ -35,6 +36,7 @@ export default function AnalyticsPage() {
           <Separator />
           <TaskUsage report={isLoading ? undefined : data} />
           <Separator />
+          <ProjectUsageHistory />
           <Separator />
           <Reports report={isLoading ? undefined : data} />
         </div>

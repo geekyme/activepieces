@@ -1,8 +1,9 @@
 import { ApplicationEventName } from '@activepieces/ee-shared'
-import { AnalyticsPieceReportItem, AnalyticsProjectReportItem, AnalyticsReportResponse, flowPieceUtil, FlowStatus, PieceCategory, PlatformId, PopulatedFlow, ProjectId } from '@activepieces/shared'
+import { AnalyticsPieceReportItem, AnalyticsProjectReportItem, AnalyticsReportResponse, flowPieceUtil, FlowStatus, PieceCategory, PlatformId, PopulatedFlow, ProjectId, ProjectUsageHistoryResponse } from '@activepieces/shared'
 import dayjs from 'dayjs'
 import { FastifyBaseLogger } from 'fastify'
 import { In, MoreThan } from 'typeorm'
+import { aiUsageRepo } from '../../ai/ai-usage-service'
 import { auditLogRepo } from '../../ee/audit-logs/audit-event-service'
 import { flowRepo } from '../../flows/flow/flow.repo'
 import { flowService } from '../../flows/flow/flow.service'
@@ -35,6 +36,80 @@ export const analyticsService = (log: FastifyBaseLogger) => ({
             tasksUsage,
             topPieces,
         }
+    },
+    getProjectUsageHistory: async (platformId: PlatformId, months: number = 6): Promise<ProjectUsageHistoryResponse> => {
+        const startDate = dayjs().subtract(months, 'month').startOf('month').toISOString()
+        
+        // Get task usage by project and month
+        const taskUsage = await flowRunRepo().createQueryBuilder('flow_run')
+            .innerJoin('project', 'project', 'flow_run."projectId" = project.id')
+            .where('project."platformId" = :platformId', { platformId })
+            .andWhere('flow_run.created >= :startDate', { startDate })
+            .select([
+                'flow_run."projectId" as "projectId"',
+                'project.displayName as "projectName"',
+                'DATE_TRUNC(\'month\', flow_run.created) as month',
+                'SUM(COALESCE(flow_run.tasks, 0)) as "totalTasks"'
+            ])
+            .groupBy('flow_run."projectId", project.displayName, DATE_TRUNC(\'month\', flow_run.created)')
+            .getRawMany()
+
+        // Get AI usage by project and month
+        const aiUsage = await aiUsageRepo().createQueryBuilder('ai_usage')
+            .innerJoin('project', 'project', 'ai_usage."projectId" = project.id')
+            .where('project."platformId" = :platformId', { platformId })
+            .andWhere('ai_usage.created >= :startDate', { startDate })
+            .select([
+                'ai_usage."projectId" as "projectId"',
+                'project.displayName as "projectName"',
+                'DATE_TRUNC(\'month\', ai_usage.created) as month',
+                'SUM(ai_usage.cost) as "totalAICost"'
+            ])
+            .groupBy('ai_usage."projectId", project.displayName, DATE_TRUNC(\'month\', ai_usage.created)')
+            .getRawMany()
+
+        // Merge task and AI usage data
+        const combinedUsage = new Map<string, {
+            projectId: string
+            projectName: string
+            month: string
+            totalTasks: number
+            totalAICost: number
+        }>()
+        
+        taskUsage.forEach((item: any) => {
+            const key = `${item.projectId}-${item.month}`
+            combinedUsage.set(key, {
+                projectId: item.projectId,
+                projectName: item.projectName,
+                month: dayjs(item.month).format('YYYY-MM'),
+                totalTasks: parseInt(item.totalTasks) || 0,
+                totalAICost: 0
+            })
+        })
+
+        aiUsage.forEach((item: any) => {
+            const key = `${item.projectId}-${item.month}`
+            const existing = combinedUsage.get(key)
+            if (existing) {
+                existing.totalAICost = parseFloat(item.totalAICost) || 0
+            } else {
+                combinedUsage.set(key, {
+                    projectId: item.projectId,
+                    projectName: item.projectName,
+                    month: dayjs(item.month).format('YYYY-MM'),
+                    totalTasks: 0,
+                    totalAICost: parseFloat(item.totalAICost) || 0
+                })
+            }
+        })
+
+        return Array.from(combinedUsage.values()).sort((a, b) => {
+            if (a.projectName !== b.projectName) {
+                return a.projectName.localeCompare(b.projectName)
+            }
+            return b.month.localeCompare(a.month)
+        })
     },
 })
 
